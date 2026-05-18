@@ -16,15 +16,11 @@
 { unpins-lib }:
 pkgs:
 let
-  cs = import "${unpins-lib.outPath}/cosmocc.nix" { pkgs = pkgs.buildPackages; };
   cosmoPkgs = unpins-lib.lib.cosmoStaticCross pkgs;
 in
-cosmoPkgs.bash.overrideAttrs (oa: {
-  postFixup = (oa.postFixup or "") + ''
-    ${cs.cosmocc}/bin/apelink \
-      -V ${toString cs.platformBits.windows} \
-      -o $out/bin/bash.exe \
-      $out/bin/bash
-    rm -f $out/bin/bash $out/bin/sh $out/bin/bashbug
-  '';
-})
+unpins-lib.lib.cosmoApelink pkgs { binName = "bash"; }
+  (cosmoPkgs.bash.overrideAttrs (oa: {
+    postFixup = (oa.postFixup or "") + ''
+      rm -f $out/bin/sh $out/bin/bashbug
+    '';
+  }))
