@@ -1,4 +1,4 @@
-# bash via cosmoStaticCross for Windows-x86_64.
+# bash via cosmoStaticCross (= pkgs.pkgsCross.cosmo) for Windows-x86_64.
 #
 # nixpkgs 25.11's bash (5.3p3) + our cosmo ncurses/readline overlays
 # build clean against cosmocc 4.0.2 without source patches —
@@ -6,21 +6,25 @@
 # version (cosmo-windows.nix using cosmoStdenv) carried turned out to
 # be unnecessary at this cosmocc version.
 #
-# apelink converts the cosmo ELF to PE32+ in postFixup. After
-# `rm $out/bin/bash`:
-#   - nixpkgs' `sh -> bash` symlink (created in upstream postInstall)
-#     dangles, stdenv's `noBrokenSymlinks` hook fails the build → rm it.
-#   - `bashbug` is a shell script that upstream postFixup rewrites to
-#     `#!$out/bin/bash`, which now doesn't exist; the script is useless
-#     on Windows without that shebang resolving → rm it.
+# The cosmo cross stdenv auto-apelinks every ELF in $out/bin (ELF →
+# PE32+, rename to `<name>.exe`) in preFixupHooks. Cleanup we still
+# do ourselves in postFixup (after the rename):
+#   - `sh.exe` — auto-hook's Phase 2 rewired the upstream `sh ->
+#     bash` symlink into `sh.exe -> bash.exe`. Drop it: bash ships
+#     single-name; `withAliases` embeds the `sh` alias in UNPIN_META
+#     at the release layer.
+#   - `bashbug` — shell script whose shebang `#!$out/bin/bash`
+#     points at a file the rename made non-existent. Drop it.
+#     (Has to be in postFixup, not postInstall: nixpkgs's automatic
+#     shebang rewrite for bashbug runs in fixupPhase and would
+#     error on a missing file.)
 { unpins-lib }:
 pkgs:
 let
   cosmoPkgs = unpins-lib.lib.cosmoStaticCross pkgs;
 in
-unpins-lib.lib.cosmoApelink pkgs { binName = "bash"; }
-  (cosmoPkgs.bash.overrideAttrs (oa: {
-    postFixup = (oa.postFixup or "") + ''
-      rm -f $out/bin/sh $out/bin/bashbug
-    '';
-  }))
+cosmoPkgs.bash.overrideAttrs (oa: {
+  postFixup = (oa.postFixup or "") + ''
+    rm -f $out/bin/sh.exe $out/bin/bashbug
+  '';
+})
