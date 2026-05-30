@@ -42,4 +42,8 @@ The first invocation will offer to add the [unpins.cachix.org](https://unpins.ca
 
 ## Manual download
 
-The [Releases](https://github.com/unpins/bash/releases) page has standalone binaries and a `.tar.zst` data archive (man pages) for manual download.
+The [Releases](https://github.com/unpins/bash/releases) page has standalone binaries for manual download.
+
+## Build notes
+
+- **Tests:** bash's `make check` is not run. It's a diff-based harness — it prints "possible anomaly" diffs but exits 0 regardless, so it can't gate a release, and it assumes a full FHS the build sandbox lacks (`/bin/echo`, …). The `bash --version` smoke test is the floor.

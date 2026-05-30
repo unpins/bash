@@ -18,6 +18,13 @@
     unpins-lib.lib.mkStandaloneFlake {
       inherit self;
       name = "bash";
+      # No `doCheck`: bash's `make check` is a diff-based harness, not a
+      # pass/fail gate — it prints "possible anomaly" diffs but exits 0
+      # regardless (verified: a native-static run flagged a `run-alias`
+      # mismatch yet still went green), so it can't actually gate a release.
+      # It also assumes a full FHS the Nix sandbox lacks (`/bin/echo`, …).
+      # The smoke test (`bash --version`) is the floor. See docs/releasing.md
+      # "Native test suite".
       windowsBuild = import ./cosmo.nix { inherit unpins-lib; };
     };
 }
