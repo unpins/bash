@@ -11,18 +11,18 @@ Part of the [unpins](https://unpins.org) project — native single-binary builds
 
 Linux/macOS use `pkgsStatic`. Windows is built via [Cosmopolitan](https://justine.lol/cosmopolitan/) (cosmocc cross-toolchain inside Nix) because mingw lacks the `fork()`/signal semantics bash's job control depends on. Cosmocc implements `fork()` on Windows via `CreateProcessW` + page copy.
 
-## Installation
+## Usage
 
-Install with [unpin](https://github.com/unpins/unpin):
+Run bash without installing:
 
 ```bash
-unpin bash
+unpin bash --version
 ```
 
-Or run without installing:
+To install onto your PATH:
 
 ```bash
-unpin run bash
+unpin install bash
 ```
 
 ## Build locally
