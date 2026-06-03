@@ -13,13 +13,14 @@ Linux/macOS use `pkgsStatic`. Windows is built via [Cosmopolitan](https://justin
 
 ## Usage
 
-Run bash without installing:
+Run the `bash` program with [unpin](https://github.com/unpins/unpin):
 
 ```bash
+unpin bash -c 'echo hello'
 unpin bash --version
 ```
 
-To install onto your PATH:
+To install it onto your PATH:
 
 ```bash
 unpin install bash
