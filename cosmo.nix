@@ -42,6 +42,19 @@ cosmoPkgs.bash.overrideAttrs (oa: {
   # compiles. Reaches @CFLAGS_FOR_BUILD@ → CCFLAGS_FOR_BUILD; -DCROSS_COMPILING
   # (@CROSS_COMPILE@) is appended separately and untouched.
   CFLAGS_FOR_BUILD = (oa.CFLAGS_FOR_BUILD or "") + " -std=gnu17";
+
+  # Windows command lookup: catalog programs install as `<name>.exe` hardlinks
+  # (cmd.exe/PowerShell find them via PATHEXT), but Cosmopolitan does not append
+  # an executable suffix during path resolution, so a bare `ls` typed at the
+  # bash prompt never resolves. The patch teaches bash's find_in_path_element to
+  # retry a PATH candidate with `.exe` when the bare name is missing — mirroring
+  # native Windows shells and keeping a single on-disk name (no `ls` + `ls.exe`
+  # pair). `__COSMOCC__`-guarded, so it is inert on the Linux/macOS static
+  # builds. Applied via postPatch with explicit -p1 to stay independent of how
+  # nixpkgs applies the upstream bash5x-NNN patches. See docs/platforms/cosmocc.md.
+  postPatch = (oa.postPatch or "") + ''
+    patch -p1 < ${./findcmd-exe-lookup.patch}
+  '';
   postFixup = (oa.postFixup or "") + ''
     rm -f $out/bin/sh.exe $out/bin/bashbug
   '';
