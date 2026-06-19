@@ -48,9 +48,21 @@
       #     gcc; gcc-15 defaults to C23 where bash-5.3's `typedef unsigned char
       #     bool` is rejected, so force gnu17 there.
       # (coreutils/grep/sed have no build compiler, so they don't hit this.)
+      #
+      # These workarounds are ONLY valid where the engine is active — native
+      # linux (`buildPlatform == hostPlatform`), the same gate as the lib's
+      # `useEngine`. Pinning CC on the cross/darwin builds (which keep the
+      # default stdenv) breaks configure's cross compiler detection ("C
+      # compiler cannot create executables"), so those keep plain pkgsStatic.
       build = pkgs:
-        let cc = pkgs.pkgsStatic.bash.stdenv.cc; in
-        pkgs.pkgsStatic.bash.overrideAttrs (old: {
+        let
+          base = pkgs.pkgsStatic.bash;
+          host = base.stdenv.hostPlatform;
+          buildp = base.stdenv.buildPlatform;
+          cc = base.stdenv.cc;
+        in
+        if !(host.isLinux && buildp.system == host.system) then base
+        else base.overrideAttrs (old: {
           preConfigure = (old.preConfigure or "") + ''
             export CC=${cc}/bin/cc
             export CXX=${cc}/bin/c++
