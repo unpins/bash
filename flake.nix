@@ -49,19 +49,34 @@
       #     bool` is rejected, so force gnu17 there.
       # (coreutils/grep/sed have no build compiler, so they don't hit this.)
       #
-      # These workarounds are ONLY valid where the engine is active — native
-      # linux (`buildPlatform == hostPlatform`), the same gate as the lib's
-      # `useEngine`. Pinning CC on the cross/darwin builds (which keep the
-      # default stdenv) breaks configure's cross compiler detection ("C
-      # compiler cannot create executables"), so those keep plain pkgsStatic.
+      # These workarounds apply on EVERY linux build (native AND cross),
+      # because the engine is active on all of linux (the lib's `useEngine =
+      # engine == "unpin-llvm" && hostPlatform.isLinux`). The engine cc-wrapper
+      # has `targetPrefix = ""`, so on a cross build its unprefixed `gcc`/`cc`
+      # shadow the depsBuildBuild build gcc; without an explicit `CC` pin bash's
+      # configure picks the wrong one and links the target binary with the
+      # build toolchain (`ld.bfd: cannot find -lreadline`). Pin CC to the engine
+      # wrapper (the stdenv IS the engine on cross too now), which matches the
+      # stdenv — so the old "C compiler cannot create executables" hazard
+      # (which only applied when cross kept the DEFAULT gcc stdenv) is gone.
+      # darwin/windows keep plain pkgsStatic (handled by the lib elsewhere).
       build = pkgs:
         let
           base = pkgs.pkgsStatic.bash;
           host = base.stdenv.hostPlatform;
           buildp = base.stdenv.buildPlatform;
           cc = base.stdenv.cc;
+          isCross = buildp.system != host.system;
+          # CC_FOR_BUILD must yield RUNNABLE build-host executables (bash's
+          # mkbuiltins/mksignames codegen runs during the build). The engine
+          # target cc is `-target <host>` and can't run on the builder, and on
+          # cross its unprefixed `gcc`/`cc` are ambiguous with the build gcc.
+          # Pin the build-platform gcc by abspath on cross; native keeps the
+          # bare `gcc` (build == host, no ambiguity) to stay byte-identical to
+          # the published native build.
+          ccForBuild = if isCross then "${pkgs.buildPackages.stdenv.cc}/bin/cc" else "gcc";
         in
-        if !(host.isLinux && buildp.system == host.system) then base
+        if !host.isLinux then base
         else base.overrideAttrs (old: {
           preConfigure = (old.preConfigure or "") + ''
             export CC=${cc}/bin/cc
@@ -72,7 +87,7 @@
           # are word-split — make would see `-std=gnu17` as a stray option).
           # `makeFlagsArray` is a real bash array that preserves the space.
           preBuild = (old.preBuild or "") + ''
-            makeFlagsArray+=( "CC_FOR_BUILD=gcc -std=gnu17" )
+            makeFlagsArray+=( "CC_FOR_BUILD=${ccForBuild} -std=gnu17" )
           '';
         });
 
