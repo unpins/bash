@@ -26,5 +26,74 @@
       # The smoke test (`bash --version`) is the floor. See docs/releasing.md
       # "Native test suite".
       windowsBuild = import ./cosmo.nix { inherit unpins-lib; };
+
+      # Linux bitcode multicall: bash joins the native unpinbox mega (a shell
+      # in it). `sh` is the only alias. Link inputs are inferred from the
+      # build. bash's `main` is 3-arg — main(argc, argv, env) — reading the
+      # environment from the THIRD parameter; the mega dispatcher calls every
+      # applet as fn(argc, argv, environ) precisely so this works.
+      engine = "unpin-llvm";
+      multicall = {
+        inferLinkInputs = true;
+        programs = [{ name = "bash"; aliases = [ "sh" ]; }];
+      };
+      # bash pulls a gnu build compiler (depsBuildBuild, for build-time codegen
+      # like mkbuiltins/mksignames) whose bare `gcc`/`cc` shadow the unpin host
+      # wrapper (same names, earlier in PATH). Two fixes:
+      #   - CC=<host wrapper abspath> via makeFlags+env: configure substitutes
+      #     CC=gcc into the Makefile (it resolves to the gnu cc, which can't do
+      #     the static-musl link — `-lreadline`/`-lc` missing), so pin CC for
+      #     both configure detection and the make link.
+      #   - CC_FOR_BUILD=gcc -std=gnu17: the build-tool compiles run on the gnu
+      #     gcc; gcc-15 defaults to C23 where bash-5.3's `typedef unsigned char
+      #     bool` is rejected, so force gnu17 there.
+      # (coreutils/grep/sed have no build compiler, so they don't hit this.)
+      build = pkgs:
+        let cc = pkgs.pkgsStatic.bash.stdenv.cc; in
+        pkgs.pkgsStatic.bash.overrideAttrs (old: {
+          preConfigure = (old.preConfigure or "") + ''
+            export CC=${cc}/bin/cc
+            export CXX=${cc}/bin/c++
+          '';
+          makeFlags = (old.makeFlags or [ ]) ++ [ "CC=${cc}/bin/cc" ];
+          # CC_FOR_BUILD has a space, so it can't ride in `makeFlags` (those
+          # are word-split — make would see `-std=gnu17` as a stray option).
+          # `makeFlagsArray` is a real bash array that preserves the space.
+          preBuild = (old.preBuild or "") + ''
+            makeFlagsArray+=( "CC_FOR_BUILD=gcc -std=gnu17" )
+          '';
+        });
+
+      # Cosmo (APE/Windows) multicall MODULE for the `unpinbox` mega-binary,
+      # emitted from the cosmo cross build (windowsBuild above, reused
+      # untouched); the catalog reads it from
+      # `bash.packages.<sys>.windows-x86_64.cosmoMulticallModule`. Cosmo has no
+      # link sidecar, so its inputs stay hand-listed (unlike the Linux block).
+      # Top-level objects + bash's bundled libs; readline/history/ncurses come
+      # from the cosmo cross as depArchives. `sh` is the only alias
+      # (bashbug/sh symlinks are dropped in cosmo.nix).
+      multicallCosmo = {
+        program = "bash";
+        programObjs = [
+          "alias.o" "array.o" "arrayfunc.o" "assoc.o" "bashhist.o" "bashline.o"
+          "bracecomp.o" "braces.o" "copy_cmd.o" "dispose_cmd.o" "error.o" "eval.o"
+          "execute_cmd.o" "expr.o" "findcmd.o" "flags.o" "general.o" "hashcmd.o"
+          "hashlib.o" "input.o" "jobs.o" "list.o" "locale.o" "mailcheck.o"
+          "make_cmd.o" "pathexp.o" "pcomplete.o" "pcomplib.o" "print_cmd.o"
+          "redir.o" "shell.o" "sig.o" "signames.o" "stringlib.o" "subst.o"
+          "syntax.o" "test.o" "trap.o" "unwind_prot.o" "variables.o" "version.o"
+          "xmalloc.o" "y.tab.o"
+        ];
+        gnulibArchives = [
+          "builtins/libbuiltins.a" "lib/sh/libsh.a" "lib/glob/libglob.a"
+          "lib/tilde/libtilde.a" "lib/intl/libintl.a"
+        ];
+        aliases = [ "sh" ];
+        depArchives = pkgs: [
+          "${pkgs.pkgsCross.cosmo.readline}/lib/libreadline.a"
+          "${pkgs.pkgsCross.cosmo.readline}/lib/libhistory.a"
+          "${pkgs.pkgsCross.cosmo.ncurses}/lib/libncurses.a"
+        ];
+      };
     };
 }
