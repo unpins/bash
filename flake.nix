@@ -35,61 +35,22 @@
       engine = "unpin-llvm";
       multicall = {
         inferLinkInputs = true;
+        # Fold into the darwin (Mach-O) mega via the engine, same as grep/bc.
+        # (Windows/APE goes through Cosmopolitan — see multicallCosmo below.)
+        darwin = true;
         programs = [{ name = "bash"; aliases = [ "sh" ]; }];
       };
-      # bash pulls a gnu build compiler (depsBuildBuild, for build-time codegen
-      # like mkbuiltins/mksignames) whose bare `gcc`/`cc` shadow the unpin host
-      # wrapper (same names, earlier in PATH). Two fixes:
-      #   - CC=<host wrapper abspath> via makeFlags+env: configure substitutes
-      #     CC=gcc into the Makefile (it resolves to the gnu cc, which can't do
-      #     the static-musl link — `-lreadline`/`-lc` missing), so pin CC for
-      #     both configure detection and the make link.
-      #   - CC_FOR_BUILD=gcc -std=gnu17: the build-tool compiles run on the gnu
-      #     gcc; gcc-15 defaults to C23 where bash-5.3's `typedef unsigned char
-      #     bool` is rejected, so force gnu17 there.
-      # (coreutils/grep/sed have no build compiler, so they don't hit this.)
-      #
-      # These workarounds apply on EVERY linux build (native AND cross),
-      # because the engine is active on all of linux (the lib's `useEngine =
-      # engine == "unpin-llvm" && hostPlatform.isLinux`). The engine cc-wrapper
-      # has `targetPrefix = ""`, so on a cross build its unprefixed `gcc`/`cc`
-      # shadow the depsBuildBuild build gcc; without an explicit `CC` pin bash's
-      # configure picks the wrong one and links the target binary with the
-      # build toolchain (`ld.bfd: cannot find -lreadline`). Pin CC to the engine
-      # wrapper (the stdenv IS the engine on cross too now), which matches the
-      # stdenv — so the old "C compiler cannot create executables" hazard
-      # (which only applied when cross kept the DEFAULT gcc stdenv) is gone.
-      # darwin/windows keep plain pkgsStatic (handled by the lib elsewhere).
-      build = pkgs:
-        let
-          base = pkgs.pkgsStatic.bash;
-          host = base.stdenv.hostPlatform;
-          buildp = base.stdenv.buildPlatform;
-          cc = base.stdenv.cc;
-          isCross = buildp.system != host.system;
-          # CC_FOR_BUILD must yield RUNNABLE build-host executables (bash's
-          # mkbuiltins/mksignames codegen runs during the build). The engine
-          # target cc is `-target <host>` and can't run on the builder, and on
-          # cross its unprefixed `gcc`/`cc` are ambiguous with the build gcc.
-          # Pin the build-platform gcc by abspath on cross; native keeps the
-          # bare `gcc` (build == host, no ambiguity) to stay byte-identical to
-          # the published native build.
-          ccForBuild = if isCross then "${pkgs.buildPackages.stdenv.cc}/bin/cc" else "gcc";
-        in
-        if !host.isLinux then base
-        else base.overrideAttrs (old: {
-          preConfigure = (old.preConfigure or "") + ''
-            export CC=${cc}/bin/cc
-            export CXX=${cc}/bin/c++
-          '';
-          makeFlags = (old.makeFlags or [ ]) ++ [ "CC=${cc}/bin/cc" ];
-          # CC_FOR_BUILD has a space, so it can't ride in `makeFlags` (those
-          # are word-split — make would see `-std=gnu17` as a stray option).
-          # `makeFlagsArray` is a real bash array that preserves the space.
-          preBuild = (old.preBuild or "") + ''
-            makeFlagsArray+=( "CC_FOR_BUILD=${ccForBuild} -std=gnu17" )
-          '';
-        });
+      # The Linux build-correctness fix (pin CC to the engine wrapper + force
+      # CC_FOR_BUILD=gnu17 for bash's mkbuiltins/mksignames build-tool codegen,
+      # which gcc-15/clang otherwise compile under C23 and reject bash-5.3's
+      # `typedef unsigned char bool`) now lives in nix-lib's
+      # native-overlay/bash.nix — the SINGLE source of truth. The engine's
+      # all-deps path applies the very same fix when another package drags bash
+      # in as a dependency (e.g. gnugrep propagates bash as its egrep/fgrep
+      # runtime shell), so the workaround can't drift between here and there.
+      # darwin/windows keep plain pkgsStatic (the cosmo Windows path is
+      # windowsBuild above); the fix is a no-op off Linux.
+      build = pkgs: unpins-lib.lib.nativeFixes.bash pkgs.pkgsStatic;
 
       # Cosmo (APE/Windows) multicall MODULE for the `unpinbox` mega-binary,
       # emitted from the cosmo cross build (windowsBuild above, reused
