@@ -25,7 +25,6 @@
       engine = "unpin-llvm";
       multicall = {
         inferLinkInputs = true;
-        darwin = true;
         programs = [{ name = "bash"; aliases = [ "sh" ]; }];
       };
       # The CC_FOR_BUILD=gnu17 build fix (bash-5.3's mkbuiltins/mksignames
