@@ -24,7 +24,6 @@
       # fn(argc, argv, environ) precisely so this works.
       engine = "unpin-llvm";
       multicall = {
-        inferLinkInputs = true;
         programs = [{ name = "bash"; aliases = [ "sh" ]; }];
       };
       # The CC_FOR_BUILD=gnu17 build fix (bash-5.3's mkbuiltins/mksignames
