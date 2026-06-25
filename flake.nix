@@ -8,58 +8,34 @@
 
   inputs.unpins-lib.url = "github:unpins/nix-lib";
 
-  # Linux/macOS: pkgsStatic.bash via mkStandaloneFlake.
-  # Windows: routed through Cosmopolitan (`windowsBuild = import ./cosmo.nix …`)
-  # because mingw lacks fork()/signals that bash's job control needs (see
-  # docs/platforms/mingw.md). Cosmocc implements fork() on Windows via
-  # CreateProcessW + page copy. Per-binary cosmo recipe inline in
-  # `./cosmo.nix` (apelink ELF→PE, drop `bashbug`/`sh`).
+  # Windows goes through Cosmopolitan, not mingw: mingw lacks the fork()/signals
+  # bash's job control needs. Cosmocc emulates fork() via CreateProcessW.
   outputs = { self, unpins-lib }:
     unpins-lib.lib.mkStandaloneFlake {
       inherit self;
       name = "bash";
-      # No `doCheck`: bash's `make check` is a diff-based harness, not a
-      # pass/fail gate — it prints "possible anomaly" diffs but exits 0
-      # regardless (verified: a native-static run flagged a `run-alias`
-      # mismatch yet still went green), so it can't actually gate a release.
-      # It also assumes a full FHS the Nix sandbox lacks (`/bin/echo`, …).
-      # The smoke test (`bash --version`) is the floor. See docs/releasing.md
-      # "Native test suite".
+      # No doCheck: bash's `make check` is a diff harness that exits 0 even on
+      # anomalies, so it can't gate a release; it also assumes a full FHS the
+      # sandbox lacks. The smoke (`bash --version`) is the floor.
       windowsBuild = import ./cosmo.nix { inherit unpins-lib; };
 
-      # Linux bitcode multicall: bash joins the native unpinbox mega (a shell
-      # in it). `sh` is the only alias. Link inputs are inferred from the
-      # build. bash's `main` is 3-arg — main(argc, argv, env) — reading the
-      # environment from the THIRD parameter; the mega dispatcher calls every
-      # applet as fn(argc, argv, environ) precisely so this works.
+      # bash's `main` is 3-arg — main(argc, argv, env), reading the environment
+      # from the THIRD param; the mega dispatcher calls applets as
+      # fn(argc, argv, environ) precisely so this works.
       engine = "unpin-llvm";
       multicall = {
         inferLinkInputs = true;
-        # Fold into the darwin (Mach-O) mega via the engine, same as grep/bc.
-        # (Windows/APE goes through Cosmopolitan — see multicallCosmo below.)
         darwin = true;
         programs = [{ name = "bash"; aliases = [ "sh" ]; }];
       };
-      # The Linux build-correctness fix (pin CC to the engine wrapper + force
-      # CC_FOR_BUILD=gnu17 for bash's mkbuiltins/mksignames build-tool codegen,
-      # which gcc-15/clang otherwise compile under C23 and reject bash-5.3's
-      # `typedef unsigned char bool`) now lives in nix-lib's
-      # native-overlay/bash.nix — the SINGLE source of truth. The engine's
-      # all-deps path applies the very same fix when another package drags bash
-      # in as a dependency (e.g. gnugrep propagates bash as its egrep/fgrep
-      # runtime shell), so the workaround can't drift between here and there.
-      # darwin/windows keep plain pkgsStatic (the cosmo Windows path is
-      # windowsBuild above); the fix is a no-op off Linux.
+      # The CC_FOR_BUILD=gnu17 build fix (bash-5.3's mkbuiltins/mksignames
+      # codegen breaks under C23) lives in nix-lib's native-overlay/bash.nix —
+      # single source of truth, so the engine's all-deps path can't drift from
+      # it when another package drags bash in. No-op off Linux.
       build = pkgs: unpins-lib.lib.nativeFixes.bash pkgs.pkgsStatic;
 
-      # Cosmo (APE/Windows) multicall MODULE for the `unpinbox` mega-binary,
-      # emitted from the cosmo cross build (windowsBuild above, reused
-      # untouched); the catalog reads it from
-      # `bash.packages.<sys>.windows-x86_64.cosmoMulticallModule`. Cosmo has no
-      # link sidecar, so its inputs stay hand-listed (unlike the Linux block).
-      # Top-level objects + bash's bundled libs; readline/history/ncurses come
-      # from the cosmo cross as depArchives. `sh` is the only alias
-      # (bashbug/sh symlinks are dropped in cosmo.nix).
+      # Cosmo (APE/Windows) multicall module for the mega. Cosmo has no link
+      # sidecar, so inputs stay hand-listed (unlike inferLinkInputs above).
       multicallCosmo = {
         program = "bash";
         programObjs = [
