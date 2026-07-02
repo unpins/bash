@@ -45,6 +45,11 @@ The first invocation will offer to add the [unpins.cachix.org](https://unpins.ca
 
 The [Releases](https://github.com/unpins/bash/releases) page has standalone binaries for manual download.
 
+## Man pages
+
+`bash.1` is embedded in the binary — read it with `unpin man bash`. `bashbug` (the bug-report shell script) isn't shipped, so its page isn't embedded.
+
 ## Build notes
 
+- **Aliases:** `unpin install bash` also creates `sh` (argv[0] dispatch); invoked as `sh`, bash runs in POSIX mode.
 - **Tests:** bash's `make check` is not run. It's a diff-based harness — it prints "possible anomaly" diffs but exits 0 regardless, so it can't gate a release, and it assumes a full FHS the build sandbox lacks (`/bin/echo`, …). The `bash --version` smoke test is the floor.

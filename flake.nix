@@ -30,7 +30,18 @@
       # codegen breaks under C23) lives in nix-lib's native-overlay/bash.nix —
       # single source of truth, so the engine's all-deps path can't drift from
       # it when another package drags bash in. No-op off Linux.
-      build = pkgs: unpins-lib.lib.nativeFixes.bash pkgs.pkgsStatic;
+      # This multicall ships only bash (aliased sh) — not bashbug, the bug-report
+      # shell script. nixpkgs installs bashbug's man page too, so drop it: the
+      # engine man-set should embed exactly the shipped program's page (bash.1),
+      # not a phantom bashbug.1.
+      build = pkgs:
+        (unpins-lib.lib.nativeFixes.bash pkgs.pkgsStatic).overrideAttrs (old: {
+          postInstall = (old.postInstall or "") + ''
+            for _mo in $outputs; do
+              rm -f "''${!_mo}"/share/man/man1/bashbug.1*
+            done
+          '';
+        });
 
       # Cosmo (APE/Windows) multicall module for the mega. Cosmo has no link
       # sidecar, so inputs stay hand-listed (unlike inferLinkInputs above).
