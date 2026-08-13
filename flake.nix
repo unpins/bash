@@ -14,6 +14,8 @@
     unpins-lib.lib.mkStandaloneFlake {
       inherit self;
       name = "bash";
+      smoke = [ "--version" ];
+      smokePattern = "GNU bash, version [0-9]+\\.[0-9]+";
       # No doCheck: bash's `make check` is a diff harness that exits 0 even on
       # anomalies, so it can't gate a release; it also assumes a full FHS the
       # sandbox lacks. The smoke (`bash --version`) is the floor.
