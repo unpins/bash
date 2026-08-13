@@ -1,8 +1,8 @@
 --- a/findcmd.c
 +++ b/findcmd.c
-@@ -553,6 +553,33 @@
+@@ -553,6 +553,35 @@
    full_path = sh_makepath (xpath, name, 0);
- 
+
    status = file_status (full_path);
 +#ifdef __COSMOCC__
 +  /* Windows: catalog programs install as "<name>.exe" hardlinks (so cmd.exe and
@@ -14,23 +14,25 @@
 +     on-disk name (no bare "ls" duplicate cluttering the directory).  */
 +  {
 +    size_t cosmo_nl = strlen (name);
++    int cosmo_status;
 +    if ((status & FS_EXISTS) == 0
 +        && (cosmo_nl < 4 || strcmp (name + cosmo_nl - 4, ".exe") != 0))
 +      {
 +        char *cosmo_exe = (char *) xmalloc (strlen (full_path) + 5);
 +        strcpy (cosmo_exe, full_path);
 +        strcat (cosmo_exe, ".exe");
-+        if (file_status (cosmo_exe) & FS_EXISTS)
++        cosmo_status = file_status (cosmo_exe);
++        if (cosmo_status & FS_EXISTS)
 +          {
 +            free (full_path);
 +            full_path = cosmo_exe;
-+            status = file_status (full_path);
++            status = cosmo_status;
 +          }
 +        else
 +          free (cosmo_exe);
 +      }
 +  }
 +#endif
- 
+
    if (xpath != path)
      free (xpath);

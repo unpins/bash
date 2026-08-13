@@ -27,6 +27,13 @@
       engine = "unpin-llvm";
       multicall = {
         programs = [{ name = "bash"; aliases = [ "sh" ]; }];
+        # The binary bakes its own base $out into BASH_LOADABLES_PATH (`enable
+        # -f`) and the bashdb include path. Neither is shipped, so both paths are
+        # dead — but Nix still counts them as runtime refs, and that one ref
+        # drags the base build, which through its compiler wrapper drags the
+        # whole toolchain: measured 259.2 MB of closure behind a 1.9 MB binary.
+        # Two spellings because the base is named per platform, same as zsh.
+        removeReferences = [ "bash-interactive-static" "bash-interactive-x86_64-unknown-cosmo" ];
       };
       # The CC_FOR_BUILD=gnu17 build fix (bash-5.3's mkbuiltins/mksignames
       # codegen breaks under C23) lives in nix-lib's native-overlay/bash.nix —
@@ -45,8 +52,10 @@
           '';
         });
 
-      # Cosmo (APE/Windows) multicall module for the mega. Cosmo has no link
-      # sidecar, so inputs stay hand-listed (unlike inferLinkInputs above).
+      # Cosmo (APE/Windows) multicall module for the mega. The engine derives its
+      # link inputs from the build's capture sidecar; cosmocc writes none, so
+      # this side stays hand-listed. A missing object is a link error, not a
+      # silent loss.
       multicallCosmo = {
         program = "bash";
         programObjs = [

@@ -51,5 +51,5 @@ The [Releases](https://github.com/unpins/bash/releases) page has standalone bina
 
 ## Build notes
 
-- **Aliases:** `unpin install bash` also creates `sh` (argv[0] dispatch); invoked as `sh`, bash runs in POSIX mode.
+- **Aliases:** `unpin install bash` also creates `sh`. Started under that name, bash runs in POSIX mode.
 - **Tests:** bash's `make check` is not run. It's a diff-based harness — it prints "possible anomaly" diffs but exits 0 regardless, so it can't gate a release, and it assumes a full FHS the build sandbox lacks (`/bin/echo`, …). The `bash --version` smoke test is the floor.
