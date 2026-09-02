@@ -26,7 +26,12 @@
       # fn(argc, argv, environ) precisely so this works.
       engine = "unpin-llvm";
       multicall = {
-        programs = [{ name = "bash"; aliases = [ "sh" ]; }];
+        programs = [{
+          name = "bash";
+          # bash ships bash.1 and no sh.1: sh-mode is documented inside
+          # bash.1 (the POSIX-mode section), not as a page of its own.
+          aliases = [ { name = "sh"; noMan = true; } ];
+        }];
         # The binary bakes its own base $out into BASH_LOADABLES_PATH (`enable
         # -f`) and the bashdb include path. Neither is shipped, so both paths are
         # dead — but Nix still counts them as runtime refs, and that one ref
