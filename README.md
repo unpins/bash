@@ -9,8 +9,6 @@
 
 Part of the [unpins](https://unpins.org) catalog; install it with [`unpin`](https://github.com/unpins/unpin): `unpin install bash`.
 
-Linux/macOS use `pkgsStatic`. Windows is built via [Cosmopolitan](https://justine.lol/cosmopolitan/) (cosmocc cross-toolchain inside Nix) because mingw lacks the `fork()`/signal semantics bash's job control depends on. Cosmocc implements `fork()` on Windows via `CreateProcessW` + page copy.
-
 ## Usage
 
 Run the `bash` program with [unpin](https://github.com/unpins/unpin):
@@ -25,6 +23,10 @@ To install it onto your PATH:
 ```bash
 unpin install bash
 ```
+
+## Man pages
+
+`bash.1` is embedded in the binary — read it with `unpin man bash`. `bashbug` (the bug-report shell script) isn't shipped, so its page isn't embedded.
 
 ## Build locally
 
@@ -45,11 +47,8 @@ The first invocation will offer to add the [unpins.cachix.org](https://unpins.ca
 
 The [Releases](https://github.com/unpins/bash/releases) page has standalone binaries for manual download.
 
-## Man pages
-
-`bash.1` is embedded in the binary — read it with `unpin man bash`. `bashbug` (the bug-report shell script) isn't shipped, so its page isn't embedded.
-
 ## Build notes
 
 - **Aliases:** `unpin install bash` also creates `sh`. Started under that name, bash runs in POSIX mode.
+- **Windows** uses [Cosmopolitan](https://justine.lol/cosmopolitan/), not mingw: bash's job control needs `fork()` and POSIX signal semantics, which mingw does not provide.
 - **Tests:** bash's `make check` is not run. It's a diff-based harness — it prints "possible anomaly" diffs but exits 0 regardless, so it can't gate a release, and it assumes a full FHS the build sandbox lacks (`/bin/echo`, …). The `bash --version` smoke test is the floor.
