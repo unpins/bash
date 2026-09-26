@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [5.3p9-2] - 2026-09-26
+
 ### Added
 
 - `unpin install bash` now also creates `sh`. Started under that name bash runs
