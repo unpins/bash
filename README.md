@@ -51,4 +51,6 @@ The [Releases](https://github.com/unpins/bash/releases) page has standalone bina
 
 - **Aliases:** `unpin install bash` also creates `sh`. Started under that name, bash runs in POSIX mode.
 - **Windows** uses [Cosmopolitan](https://justine.lol/cosmopolitan/), not mingw: bash's job control needs `fork()` and POSIX signal semantics, which mingw does not provide.
-- **Tests:** bash's `make check` is not run. It's a diff-based harness — it prints "possible anomaly" diffs but exits 0 regardless, so it can't gate a release, and it assumes a full FHS the build sandbox lacks (`/bin/echo`, …). The `bash --version` smoke test is the floor.
+- **Line editing** works without a host `/usr/share/terminfo`: common terminal descriptions are built in. On Linux and macOS the system's terminfo still wins when present.
+- **Not included:** loadable builtins (`enable -f` needs dynamic loading, which a single self-contained binary does not do); translated messages (no message catalogs ship, so bash speaks English).
+- **Tests:** bash's `make check` is not run: it exits 0 whatever its diffs show, so it cannot fail a build, and it expects a full FHS (`/bin/echo`, …) the build sandbox lacks.

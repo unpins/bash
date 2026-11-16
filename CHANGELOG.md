@@ -8,6 +8,9 @@
   not ship. The 5.3p9-2 fix covered only Linux and macOS.
 - Windows: `sh.exe`, a full path to it, or `SH.EXE` now start bash in POSIX
   mode, as a bare `sh` already did.
+- The README now says that line editing works without a host terminfo, that
+  `enable -f` and translated messages are not available, and states the test
+  policy in the catalog's form.
 
 ## [5.3p9-2] - 2026-09-26
 
