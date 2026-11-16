@@ -1,12 +1,9 @@
 # bash via cosmoStaticCross (= pkgs.pkgsCross.cosmo) for Windows-x86_64.
 #
-# nixpkgs 26.05's bash (5.3p9) + our cosmo ncurses/readline overlays
-# build clean against cosmocc 4.0.2 without *source* patches —
-# superconfigure's bash/readline/ncurses diffs that the playground
-# version (cosmo-windows.nix using cosmoStdenv) carried turned out to
-# be unnecessary at this cosmocc version.
+# nixpkgs' bash (5.3p9) + our cosmo ncurses/readline overlays build
+# against cosmocc without source patches beyond the .exe lookup below.
 #
-# One build-env flag is needed since the 26.05 bump, though: the build
+# One build-env flag is needed since the 26.05 bump: the build
 # host gcc is now gcc-15, which defaults to `-std=gnu23` where `bool`
 # is a reserved keyword. bash cross-compiles its build-time codegen
 # tools (mkbuiltins, …) with that host gcc, and `bashansi.h`'s fallback
@@ -15,17 +12,15 @@
 # build-tool standard to gnu17 — via `CFLAGS_FOR_BUILD`, which flows into
 # `CCFLAGS_FOR_BUILD` while the separate `@CROSS_COMPILE@`
 # (`-DCROSS_COMPILING`) stays intact — makes `bool` a plain identifier
-# again so the typedef is legal. Host/native musl builds are unaffected:
-# there build == host, so the same gcc-15 that compiles the tools also
-# ran configure and reported native bool, skipping the typedef entirely.
+# again so the typedef is legal.
 #
 # The cosmo cross stdenv auto-apelinks every ELF in $out/bin (ELF →
 # PE32+, rename to `<name>.exe`) in preFixupHooks. Cleanup we still
 # do ourselves in postFixup (after the rename):
 #   - `sh.exe` — auto-hook's Phase 2 rewired the upstream `sh ->
-#     bash` symlink into `sh.exe -> bash.exe`. Drop it: bash ships
-#     single-name; `withAliases` embeds the `sh` alias in UNPIN_META
-#     at the release layer.
+#     bash` symlink into `sh.exe -> bash.exe`. Drop it: the `sh` alias
+#     is declared in the flake's `multicallCosmo.aliases` and nix-lib embeds it
+#     in the binary; no `sh.exe` ships.
 #   - `bashbug` — shell script whose shebang `#!$out/bin/bash`
 #     points at a file the rename made non-existent. Drop it.
 #     (Has to be in postFixup, not postInstall: nixpkgs's automatic

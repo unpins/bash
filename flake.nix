@@ -43,7 +43,8 @@
       # The CC_FOR_BUILD=gnu17 build fix (bash-5.3's mkbuiltins/mksignames
       # codegen breaks under C23) lives in nix-lib's native-overlay/bash.nix —
       # single source of truth, so the engine's all-deps path can't drift from
-      # it when another package drags bash in. No-op off Linux.
+      # it when another package drags bash in. Applies on Linux and darwin;
+      # cosmo.nix carries its own for Windows.
       # This multicall ships only bash (aliased sh) — not bashbug, the bug-report
       # shell script. nixpkgs installs bashbug's man page too, so drop it: the
       # engine man-set should embed exactly the shipped program's page (bash.1),
