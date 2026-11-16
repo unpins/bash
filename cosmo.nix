@@ -57,5 +57,8 @@ cosmoPkgs.bash.overrideAttrs (oa: {
   '';
   postFixup = (oa.postFixup or "") + ''
     rm -f $out/bin/sh.exe $out/bin/bashbug
+    for _mo in $outputs; do
+      rm -f "''${!_mo}"/share/man/man1/bashbug.1*
+    done
   '';
 })
