@@ -1,0 +1,41 @@
+Windows (Cosmopolitan): recognise sh.exe as sh.
+
+bash enters POSIX mode when its name is exactly "sh". On Windows the alias is
+the file sh.exe, so argv[0] is "sh.exe" or a full path (possibly with
+backslashes) whenever the user types the suffix or a path, and the test never
+matched. Strip a trailing .exe, take the name after the last backslash too, and
+compare case-insensitively, as Windows does. __COSMOCC__-guarded.
+
+--- a/shell.c
++++ b/shell.c
+@@ -1789,10 +1789,30 @@
+       login_shell = 1;
+     }
+ 
++#ifdef __COSMOCC__
++  /* Windows: the alias is the file sh.exe, and argv[0] keeps the suffix
++     whenever the user types it or a full path, possibly with backslashes and
++     in any case.  Match the name the way Windows does.  */
++  {
++    char *bs = strrchr (shell_name, '\\');
++    size_t cosmo_nl;
++
++    if (bs)
++      shell_name = bs + 1;
++    cosmo_nl = strlen (shell_name);
++    if (cosmo_nl >= 4 && strcasecmp (shell_name + cosmo_nl - 4, ".exe") == 0)
++      cosmo_nl -= 4;
++    if (cosmo_nl == 2 && strncasecmp (shell_name, "sh", 2) == 0)
++      act_like_sh++;
++    if (cosmo_nl == 2 && strncasecmp (shell_name, "su", 2) == 0)
++      su_shell++;
++  }
++#else
+   if (shell_name[0] == 's' && shell_name[1] == 'h' && shell_name[2] == '\0')
+     act_like_sh++;
+   if (shell_name[0] == 's' && shell_name[1] == 'u' && shell_name[2] == '\0')
+     su_shell++;
++#endif
+ 
+   shell_name = argv0 ? argv0 : PROGRAM;
+   FREE (dollar_vars[0]);

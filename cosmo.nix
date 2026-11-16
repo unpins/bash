@@ -47,8 +47,11 @@ cosmoPkgs.bash.overrideAttrs (oa: {
   # pair). `__COSMOCC__`-guarded, so it is inert on the Linux/macOS static
   # builds. Applied via postPatch with explicit -p1 to stay independent of how
   # nixpkgs applies the upstream bash5x-NNN patches. See docs/platforms/cosmocc.md.
+  # sh-exe-posix.patch: `sh.exe` and a full path to it enter POSIX mode like
+  # a bare `sh` does.
   postPatch = (oa.postPatch or "") + ''
     patch -p1 < ${./findcmd-exe-lookup.patch}
+    patch -p1 < ${./sh-exe-posix.patch}
   '';
   postFixup = (oa.postFixup or "") + ''
     rm -f $out/bin/sh.exe $out/bin/bashbug

@@ -6,6 +6,8 @@
 
 - The Windows binary no longer embeds a man page for `bashbug`, which it does
   not ship. The 5.3p9-2 fix covered only Linux and macOS.
+- Windows: `sh.exe`, a full path to it, or `SH.EXE` now start bash in POSIX
+  mode, as a bare `sh` already did.
 
 ## [5.3p9-2] - 2026-09-26
 
